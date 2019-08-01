@@ -1,5 +1,6 @@
 package com.example.bmi_bmr_calculator;
 
+
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
@@ -9,10 +10,12 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.RadioGroup;
 
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.io.*;
+
 
 public class MainActivity extends AppCompatActivity {
-
-    //private TextView test;
 
     private TextView inputName;
     private TextView inputHeight;
@@ -40,17 +43,19 @@ public class MainActivity extends AppCompatActivity {
         inputGender = findViewById(R.id.radioGender);
     }
 
+
+
     Button.OnClickListener bntSubmitOnClick = new View.OnClickListener() {
 
         @Override
         public void onClick(View v) {
 
             String name = inputName.getText().toString();
-            Double height = Double.parseDouble(inputHeight.getText().toString());
-            Double weight = Double.parseDouble(inputWeight.getText().toString());
+            double height = Double.parseDouble(inputHeight.getText().toString());
+            double weight = Double.parseDouble(inputWeight.getText().toString());
             int age = Integer.parseInt(inputAge.getText().toString());
             int gender = inputGender.getCheckedRadioButtonId();
-            Double bmi, bmr = 0.0;
+            double bmi, bmr = 0.0;
 
             //calculate BMI
             bmi = weight / Math.pow((height / 100), 2);
@@ -67,21 +72,43 @@ public class MainActivity extends AppCompatActivity {
                     break;
             }
 
-            //test.setText(Double.toString(bmr));
+            final String params = "name=" + name
+                    + "&weight=" + weight
+                    + "&height=" + height
+                    + "&age=" + age
+                    + "&gender=" + ((gender == R.id.radioMale) ? "Male" : "Female")
+                    + "&bmi=" + bmi
+                    + "&bmr=" + bmr;
 
-            Bundle bundle = new Bundle();
-            bundle.putDouble("bmi", bmi);
-            bundle.putDouble("bmr", bmr);
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try
+                    {
+                        URL url = new URL("http://10.0.2.2/androidhomework/insert.php");
+                        HttpURLConnection urlConnection = (HttpURLConnection)url.openConnection();//對資料庫打開連結
+                        urlConnection.setRequestMethod("POST");
+                        urlConnection.connect();//connect database
 
-            Intent intent = new Intent();
-            intent.setClass(MainActivity.this, result.class);
-            intent.putExtras(bundle);
-            startActivity(intent);
+                        OutputStream os = urlConnection.getOutputStream();
+                        os.write(params.getBytes());
+                        os.flush();
+                        os.close();
+                        InputStream is = urlConnection.getInputStream();//從database 開啟 stream
+
+                        Intent intent = new Intent();
+                        intent.setClass(MainActivity.this, result.class);
+                        startActivity(intent);
+                    } catch(IOException e)
+                    {
+                        System.out.println(e.getMessage());
+                    }
+                }
+            }).start();
         }
     };
 
     Button.OnClickListener bntClearOnClick = new View.OnClickListener() {
-
         @Override
         public void onClick(View v) {
 
@@ -92,3 +119,6 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 }
+
+
+
