@@ -4,13 +4,17 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -25,8 +29,6 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-
-
 public class result extends AppCompatActivity {
 
     private ListAdapter listAdapter;
@@ -34,6 +36,7 @@ public class result extends AppCompatActivity {
     private Handler handler;  //建立handler
     private TextView test;
     private static String inStr = "initial";
+    ArrayList<String> arrayList = new ArrayList<>();
     Context txContext;
 
     @Override
@@ -41,19 +44,55 @@ public class result extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_result);
 
-        test = findViewById(R.id.textView);
-
-        txContext = this;
+        //test = findViewById(R.id.textView);
+        //txContext = this;
         String[] outputData = {""};
-        //String[] outputData = {"1", "2", "3"};
         listView = (ListView) findViewById(R.id.listView);
-        listAdapter = new ArrayAdapter<String>(txContext, android.R.layout.simple_list_item_1, outputData);
+        listAdapter = new ArrayAdapter<String>(result.this, android.R.layout.simple_list_item_1, outputData);
         listView.setAdapter(listAdapter);
-        handler = new MyHandler();
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+                String[] tokens = listView.getItemAtPosition(position).toString().split(",");
+                Delete(Integer.parseInt(tokens[0]));
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                clear(listView);
+                //listView.setAdapter(null);
+                arrayList.clear();
+                Query();
+
+            }
+        });
+        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+
+                String[] tokens = listView.getItemAtPosition(position).toString().split(",");
+
+                Intent intent = new Intent();
+                intent.setClass(result.this, edit.class);
+                intent .putExtra("id",tokens[0]);
+                startActivity(intent);
+
+                return false;
+            }
+        });
+
+
+
+
+
+        handler = new QueryHandler();
+        arrayList.clear();
         Query();
     }
     private void Query() {
-
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -84,8 +123,32 @@ public class result extends AppCompatActivity {
         }).start();
     }
 
-    class MyHandler extends Handler{
-        ArrayList<String> arrayList = new ArrayList<>();
+    private void Delete(int id) {
+        final String params = "id=" + (id);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    URL url = new URL("http://10.0.2.2/androidhomework/delete.php");
+                    HttpURLConnection urlConnection = (HttpURLConnection)url.openConnection();//對資料庫打開連結
+                    urlConnection.setRequestMethod("POST");
+                    urlConnection.connect();//connect database
+
+                    OutputStream os = urlConnection.getOutputStream();
+                    os.write(params.getBytes());
+                    os.flush();
+                    os.close();
+                    InputStream is = urlConnection.getInputStream();//從database 開啟 stream
+
+                } catch(IOException e)
+                {
+                    System.out.println(e.getMessage());
+                }
+            }
+        }).start();
+    }
+
+    class QueryHandler extends Handler {
         @Override
         public void handleMessage(Message msg) {
             if(msg.what == 1) {
@@ -94,15 +157,14 @@ public class result extends AppCompatActivity {
                     JSONArray jsonArray = new JSONArray(inStr);
                     for (int i = 0; i < jsonArray.length(); i++) {
                         JSONObject obj = jsonArray.getJSONObject(i);
-                        String tmp = "Name: " + obj.getString("name") +
-                                "\nHeight:" + obj.getString("height") +
-                                "\nWeight:" + obj.getString("weight") +
-                                "\nAge:" + obj.getString("age") +
-                                "\nGender:" + obj.getString("gender") +
-                                "\nBMI:" + obj.getString("bmi") +
+                        String tmp = obj.getString("id") + "," +
+                                "\nName: " + obj.getString("name") + "," +
+                                "\nHeight:" + obj.getString("height") + "," +
+                                "\nWeight:" + obj.getString("weight") + "," +
+                                "\nAge:" + obj.getString("age") + "," +
+                                "\nGender:" + obj.getString("gender") + "," +
+                                "\nBMI:" + obj.getString("bmi") + "," +
                                 "\nBMR:" + obj.getString("bmr");
-                        //String tmp = Integer.toString(i);
-                        //test.setText(inStr);
                         arrayList.add(tmp);
                     }
                 } catch(Exception e){
@@ -113,20 +175,26 @@ public class result extends AppCompatActivity {
                 Object list[] = arrayList.toArray();
                 String[] outputData = Arrays.copyOf(list, list.length, String[].class);
 
-                listAdapter = new ArrayAdapter<String>(txContext, android.R.layout.simple_list_item_1, outputData);
+                //listView.setAdapter(null);
+                listAdapter = new ArrayAdapter<String>(result.this, android.R.layout.simple_list_item_1, outputData);
                 listView.setAdapter(listAdapter);
             }
         }
     }
+
+
+
+    public void clear(View v)
+    {
+        ArrayAdapter adapter = (ArrayAdapter) listView.getAdapter( );// 获取当前ligtview的adapter
+        int cnt = adapter.getCount();// listview多少个组件
+        if (cnt > 0)
+        {
+            listView. setAdapter(new ArrayAdapter<String>(this,android.R.layout .simple_list_item_1));
+        }
+
+    }
 }
-
-
-
-
-
-
-
-
 
 
 
